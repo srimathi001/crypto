@@ -1,0 +1,113 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define SIZE 5
+
+// Function to generate the 5x5 matrix using the keyword
+void generateMatrix(char key[], char matrix[SIZE][SIZE]) {
+    int alphabet[26] = {0}; // Array to track used letters
+    int row = 0, col = 0;
+
+    for (int i = 0; key[i] != '\0'; i++) {
+        char ch = tolower(key[i]);
+        if (ch == 'j') ch = 'i'; // Treat 'j' as 'i'
+        if (!alphabet[ch - 'a'] && isalpha(ch)) {
+            matrix[row][col] = ch;
+            alphabet[ch - 'a'] = 1;
+            col++;
+            if (col == SIZE) {
+                col = 0;
+                row++;
+            }
+        }
+    }
+
+    // Fill the remaining cells with unused letters
+    for (char ch = 'a'; ch <= 'z'; ch++) {
+        if (ch == 'j') continue; // Skip 'j'
+        if (!alphabet[ch - 'a']) {
+            matrix[row][col] = ch;
+            alphabet[ch - 'a'] = 1;
+            col++;
+            if (col == SIZE) {
+                col = 0;
+                row++;
+            }
+        }
+    }
+}
+
+// Function to find the position of a character in the matrix
+void findPosition(char ch, char matrix[SIZE][SIZE], int *row, int *col) {
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            if (matrix[i][j] == ch) {
+                *row = i;
+                *col = j;
+                return;
+            }
+        }
+    }
+}
+
+// Function to encrypt plaintext using Playfair Cipher
+void encryptPlayfair(char plaintext[], char key[]) {
+    char matrix[SIZE][SIZE];
+    generateMatrix(key, matrix);
+
+    char preparedText[100];
+    int k = 0;
+
+    // Prepare plaintext (remove spaces and handle repeated letters)
+    for (int i = 0; plaintext[i] != '\0'; i++) {
+        if (isalpha(plaintext[i])) {
+            char ch = tolower(plaintext[i]);
+            if (k > 0 && preparedText[k - 1] == ch) {
+                preparedText[k++] = 'x'; // Insert filler 'x' for repeated letters
+            }
+            preparedText[k++] = ch;
+        }
+    }
+    if (k % 2 != 0) preparedText[k++] = 'x'; // Add filler if odd length
+    preparedText[k] = '\0';
+
+    // Encrypt two letters at a time
+    for (int i = 0; i < k; i += 2) {
+        int r1, c1, r2, c2;
+        findPosition(preparedText[i], matrix, &r1, &c1);
+        findPosition(preparedText[i + 1], matrix, &r2, &c2);
+
+        if (r1 == r2) {
+            // Same row: shift right
+            preparedText[i] = matrix[r1][(c1 + 1) % SIZE];
+            preparedText[i + 1] = matrix[r2][(c2 + 1) % SIZE];
+        } else if (c1 == c2) {
+            // Same column: shift down
+            preparedText[i] = matrix[(r1 + 1) % SIZE][c1];
+            preparedText[i + 1] = matrix[(r2 + 1) % SIZE][c2];
+        } else {
+            // Rectangle: swap columns
+            preparedText[i] = matrix[r1][c2];
+            preparedText[i + 1] = matrix[r2][c1];
+        }
+    }
+
+    printf("Encrypted text: %s\n", preparedText);
+}
+
+int main() {
+    char plaintext[100], key[100];
+
+    printf("Enter the plaintext: ");
+    fgets(plaintext, sizeof(plaintext), stdin);
+    plaintext[strcspn(plaintext, "\n")] = '\0'; // Remove newline character
+
+    printf("Enter the key: ");
+    fgets(key, sizeof(key), stdin);
+    key[strcspn(key, "\n")] = '\0'; // Remove newline character
+
+    encryptPlayfair(plaintext, key);
+
+    return 0;
+}
