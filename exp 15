@@ -1,0 +1,109 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+// Define the size of the alphabet
+#define ALPHABET_SIZE 26
+
+// Frequency of letters in English (percentage approximation)
+double english_freq[ALPHABET_SIZE] = {
+    12.70, 9.06, 8.17, 7.51, 6.97, 6.75, 6.33, 6.09, 5.99, 4.25, 4.03, 
+    2.78, 2.36, 2.23, 2.02, 1.93, 1.29, 1.00, 0.99, 0.77, 0.15, 0.15, 
+    0.15, 0.10, 0.07, 0.03
+};
+
+// Function to calculate letter frequencies in ciphertext
+void calculate_frequencies(const char *ciphertext, double *freq) {
+    int count[ALPHABET_SIZE] = {0};
+    int total = 0;
+
+    // Count occurrences of each letter
+    for (int i = 0; ciphertext[i]; i++) {
+        if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            count[ciphertext[i] - 'a']++;
+            total++;
+        } else if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            count[ciphertext[i] - 'A']++;
+            total++;
+        }
+    }
+
+    // Calculate frequencies
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        freq[i] = (double)count[i] / total * 100.0;
+    }
+}
+
+// Function to decrypt text with a given shift key
+void decrypt(const char *ciphertext, int shift, char *plaintext) {
+    for (int i = 0; ciphertext[i]; i++) {
+        if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            plaintext[i] = ((ciphertext[i] - 'a' - shift + ALPHABET_SIZE) % ALPHABET_SIZE) + 'a';
+        } else if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            plaintext[i] = ((ciphertext[i] - 'A' - shift + ALPHABET_SIZE) % ALPHABET_SIZE) + 'A';
+        } else {
+            plaintext[i] = ciphertext[i];
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0';
+}
+
+// Function to compute the chi-squared statistic for a given shift
+double chi_squared(double *freq, int shift) {
+    double chi = 0.0;
+
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        int shifted_index = (i + shift) % ALPHABET_SIZE;
+        chi += ((freq[shifted_index] - english_freq[i]) * (freq[shifted_index] - english_freq[i])) / english_freq[i];
+    }
+
+    return chi;
+}
+
+// Function to find the top N probable plaintexts
+void find_top_plaintexts(const char *ciphertext, int top_n) {
+    double freq[ALPHABET_SIZE];
+    double chi_scores[ALPHABET_SIZE];
+    char plaintext[1024];
+
+    // Calculate letter frequencies in the ciphertext
+    calculate_frequencies(ciphertext, freq);
+
+    // Compute chi-squared scores for each possible key
+    for (int shift = 0; shift < ALPHABET_SIZE; shift++) {
+        chi_scores[shift] = chi_squared(freq, shift);
+    }
+
+    // Display the top N probable plaintexts
+    printf("Top %d possible plaintexts:\n", top_n);
+    for (int rank = 0; rank < top_n; rank++) {
+        double min_chi = 1e9;
+        int best_shift = -1;
+
+        // Find the key with the smallest chi-squared value
+        for (int shift = 0; shift < ALPHABET_SIZE; shift++) {
+            if (chi_scores[shift] < min_chi) {
+                min_chi = chi_scores[shift];
+                best_shift = shift;
+            }
+        }
+
+        // Decrypt using the best key and display the result
+        decrypt(ciphertext, best_shift, plaintext);
+        printf("Key %d: %s (Chi-Squared: %.2f)\n", best_shift, plaintext, min_chi);
+
+        // Mark this key as used
+        chi_scores[best_shift] = 1e9;
+    }
+}
+
+int main() {
+    char ciphertext[] = "Xlwvqlrzohvxlwvxlwv";
+
+    int top_n = 10; // Number of plaintexts to display
+
+    // Perform frequency analysis and display results
+    find_top_plaintexts(ciphertext, top_n);
+
+    return 0;
+}
