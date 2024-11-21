@@ -1,0 +1,88 @@
+#include <stdio.h>
+#include <string.h>
+
+// Function to find modulo
+int mod(int a, int b) {
+    return (a % b + b) % b;
+}
+
+// Function to compute the modular inverse of a number modulo 26
+int mod_inverse(int a, int m) {
+    for (int x = 1; x < m; x++) {
+        if ((a * x) % m == 1)
+            return x;
+    }
+    return -1; // No modular inverse
+}
+
+// Function to multiply matrices and reduce mod 26
+void matrix_multiply(int a[2][2], int b[2], int result[2]) {
+    result[0] = mod(a[0][0] * b[0] + a[0][1] * b[1], 26);
+    result[1] = mod(a[1][0] * b[0] + a[1][1] * b[1], 26);
+}
+
+int main() {
+    // Key matrix
+    int key[2][2] = {{9, 4}, {5, 7}};
+    
+    // Plaintext
+    char plaintext[] = "meetmeattheusualplaceattenratherthaneightoclock";
+    int len = strlen(plaintext);
+
+    // Padding plaintext if not multiple of 2
+    if (len % 2 != 0) {
+        strcat(plaintext, "x");
+        len++;
+    }
+
+    printf("Plaintext: %s\n", plaintext);
+
+    // Encryption
+    printf("\nEncryption Process:\n");
+    printf("Ciphertext: ");
+    char ciphertext[len + 1];
+    for (int i = 0; i < len; i += 2) {
+        int block[2] = {plaintext[i] - 'a', plaintext[i + 1] - 'a'};
+        int result[2];
+        matrix_multiply(key, block, result);
+        ciphertext[i] = result[0] + 'a';
+        ciphertext[i + 1] = result[1] + 'a';
+        printf("%c%c", ciphertext[i], ciphertext[i + 1]);
+    }
+    ciphertext[len] = '\0';
+
+    // Key inverse calculation
+    int determinant = mod(key[0][0] * key[1][1] - key[0][1] * key[1][0], 26);
+    int determinant_inverse = mod_inverse(determinant, 26);
+    if (determinant_inverse == -1) {
+        printf("\nKey matrix is not invertible.\n");
+        return -1;
+    }
+
+    // Adjugate of the key matrix
+    int key_inverse[2][2] = {
+        {key[1][1], -key[0][1]},
+        {-key[1][0], key[0][0]}
+    };
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            key_inverse[i][j] = mod(key_inverse[i][j] * determinant_inverse, 26);
+        }
+    }
+
+    // Decryption
+    printf("\n\nDecryption Process:\n");
+    printf("Recovered Plaintext: ");
+    char recovered_plaintext[len + 1];
+    for (int i = 0; i < len; i += 2) {
+        int block[2] = {ciphertext[i] - 'a', ciphertext[i + 1] - 'a'};
+        int result[2];
+        matrix_multiply(key_inverse, block, result);
+        recovered_plaintext[i] = result[0] + 'a';
+        recovered_plaintext[i + 1] = result[1] + 'a';
+        printf("%c%c", recovered_plaintext[i], recovered_plaintext[i + 1]);
+    }
+    recovered_plaintext[len] = '\0';
+
+    return 0;
+}
