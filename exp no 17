@@ -1,0 +1,91 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+// Constants for DES
+int PC1[] = {
+    57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26, 18, 
+    10, 2, 59, 51, 43, 35, 27, 19, 11, 3, 60, 52, 44, 36, 
+    63, 55, 47, 39, 31, 23, 15, 7, 62, 54, 46, 38, 30, 22, 
+    14, 6, 61, 53, 45, 37, 29, 21, 13, 5, 28, 20, 12, 4
+};
+
+int PC2[] = {
+    14, 17, 11, 24, 1, 5, 3, 28, 15, 6, 21, 10, 
+    23, 19, 12, 4, 26, 8, 16, 7, 27, 20, 13, 2, 
+    41, 52, 31, 37, 47, 55, 30, 40, 51, 45, 33, 48, 
+    44, 49, 39, 56, 34, 53, 46, 42, 50, 36, 29, 32
+};
+
+int SHIFT_SCHEDULE[] = {
+    1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1
+};
+
+// Function to perform the left circular shift
+void left_shift(uint32_t *half_key, int shifts) {
+    *half_key = ((*half_key << shifts) | (*half_key >> (28 - shifts))) & 0x0FFFFFFF;
+}
+
+// Function to generate subkeys
+void generate_subkeys(uint64_t master_key, uint64_t subkeys[16]) {
+    uint64_t permuted_key = 0;
+    uint32_t C = 0, D = 0;
+
+    // Apply PC1 to master key
+    for (int i = 0; i < 56; i++) {
+        permuted_key <<= 1;
+        permuted_key |= (master_key >> (64 - PC1[i])) & 1;
+    }
+
+    // Split into C and D halves
+    C = (permuted_key >> 28) & 0x0FFFFFFF;
+    D = permuted_key & 0x0FFFFFFF;
+
+    // Generate subkeys
+    for (int i = 0; i < 16; i++) {
+        left_shift(&C, SHIFT_SCHEDULE[i]);
+        left_shift(&D, SHIFT_SCHEDULE[i]);
+
+        uint64_t combined_key = ((uint64_t)C << 28) | D;
+        subkeys[i] = 0;
+
+        for (int j = 0; j < 48; j++) {
+            subkeys[i] <<= 1;
+            subkeys[i] |= (combined_key >> (56 - PC2[j])) & 1;
+        }
+    }
+}
+
+// Function to apply DES decryption (simplified example)
+void des_decrypt(uint64_t ciphertext, uint64_t subkeys[16], uint64_t *plaintext) {
+    uint64_t permuted_text = ciphertext; // Placeholder for actual DES decryption process
+
+    // Reverse the key order for decryption
+    for (int i = 0; i < 8; i++) {
+        uint64_t temp = subkeys[i];
+        subkeys[i] = subkeys[15 - i];
+        subkeys[15 - i] = temp;
+    }
+
+    // Example application of the keys (not full DES process)
+    *plaintext = permuted_text ^ subkeys[0]; // Simplified XOR for demonstration
+}
+
+int main() {
+    uint64_t master_key = 0x133457799BBCDFF1; // Example master key
+    uint64_t ciphertext = 0x85E813540F0AB405; // Example ciphertext
+    uint64_t subkeys[16];
+    uint64_t plaintext;
+
+    // Generate subkeys
+    generate_subkeys(master_key, subkeys);
+
+    // Perform decryption
+    des_decrypt(ciphertext, subkeys, &plaintext);
+
+    // Display results
+    printf("Ciphertext: %016llX\n", ciphertext);
+    printf("Plaintext: %016llX\n", plaintext);
+
+    return 0;
+}
