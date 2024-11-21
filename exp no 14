@@ -1,0 +1,64 @@
+#include <stdio.h>
+#include <string.h>
+
+// Function to encrypt plaintext using the one-time pad key
+void encrypt(char *plaintext, int *key, char *ciphertext) {
+    int len = strlen(plaintext);
+    for (int i = 0; i < len; i++) {
+        if (plaintext[i] >= 'a' && plaintext[i] <= 'z') { // Encrypt lowercase
+            ciphertext[i] = ((plaintext[i] - 'a') + key[i]) % 26 + 'a';
+        } else if (plaintext[i] >= 'A' && plaintext[i] <= 'Z') { // Encrypt uppercase
+            ciphertext[i] = ((plaintext[i] - 'A') + key[i]) % 26 + 'A';
+        } else {
+            ciphertext[i] = plaintext[i]; // Keep non-alphabetic characters unchanged
+        }
+    }
+    ciphertext[len] = '\0';
+}
+
+// Function to decrypt ciphertext using the one-time pad key
+void decrypt(char *ciphertext, int *key, char *plaintext) {
+    int len = strlen(ciphertext);
+    for (int i = 0; i < len; i++) {
+        if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') { // Decrypt lowercase
+            plaintext[i] = ((ciphertext[i] - 'a') - key[i] + 26) % 26 + 'a';
+        } else if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') { // Decrypt uppercase
+            plaintext[i] = ((ciphertext[i] - 'A') - key[i] + 26) % 26 + 'A';
+        } else {
+            plaintext[i] = ciphertext[i]; // Keep non-alphabetic characters unchanged
+        }
+    }
+    plaintext[len] = '\0';
+}
+
+int main() {
+    // Input plaintext
+    char plaintext[] = "sendmoremoney";
+    int key[] = {9, 0, 1, 7, 23, 15, 21, 14, 11, 11, 2, 8, 9}; // Key stream
+    int len = strlen(plaintext);
+
+    // Encryption
+    char ciphertext[len + 1];
+    encrypt(plaintext, key, ciphertext);
+    printf("Ciphertext: %s\n", ciphertext);
+
+    // Part (b): Find a new key for decryption to "cashnotneeded"
+    char new_plaintext[] = "cashnotneeded";
+    int new_key[len];
+    for (int i = 0; i < len; i++) {
+        if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            new_key[i] = ((new_plaintext[i] - 'a') - (ciphertext[i] - 'a') + 26) % 26;
+        } else {
+            new_key[i] = 0; // Non-alphabetic characters
+        }
+    }
+
+    // Display new key
+    printf("New key for decryption: ");
+    for (int i = 0; i < len; i++) {
+        printf("%d ", new_key[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
