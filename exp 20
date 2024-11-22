@@ -1,0 +1,111 @@
+#include <stdio.h>
+#include <string.h>
+
+#define BLOCK_SIZE 8  // Block size for ECB/CBC
+#define PLAINTEXT_SIZE 24  // Example plaintext size
+
+// XOR two blocks of data
+void xor_blocks(const unsigned char *block1, const unsigned char *block2, unsigned char *output, int size) {
+    for (int i = 0; i < size; i++) {
+        output[i] = block1[i] ^ block2[i];
+    }
+}
+
+// Simple encryption function (dummy substitution)
+void simple_encrypt_block(const unsigned char *input, unsigned char *output) {
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        output[i] = input[i] ^ 0xAA;  // XOR with a constant
+    }
+}
+
+// Simple decryption function (inverse of dummy substitution)
+void simple_decrypt_block(const unsigned char *input, unsigned char *output) {
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        output[i] = input[i] ^ 0xAA;  // XOR with the same constant
+    }
+}
+
+// ECB encryption
+void encrypt_ecb(const unsigned char *plaintext, int plaintext_len, unsigned char *ciphertext) {
+    for (int i = 0; i < plaintext_len; i += BLOCK_SIZE) {
+        simple_encrypt_block(plaintext + i, ciphertext + i);
+    }
+}
+
+// ECB decryption
+void decrypt_ecb(const unsigned char *ciphertext, int ciphertext_len, unsigned char *plaintext) {
+    for (int i = 0; i < ciphertext_len; i += BLOCK_SIZE) {
+        simple_decrypt_block(ciphertext + i, plaintext + i);
+    }
+}
+
+// CBC encryption
+void encrypt_cbc(const unsigned char *plaintext, int plaintext_len, 
+                 const unsigned char *iv, unsigned char *ciphertext) {
+    unsigned char block[BLOCK_SIZE];
+    unsigned char current_iv[BLOCK_SIZE];
+    memcpy(current_iv, iv, BLOCK_SIZE);  // Initialize IV
+
+    for (int i = 0; i < plaintext_len; i += BLOCK_SIZE) {
+        xor_blocks(plaintext + i, current_iv, block, BLOCK_SIZE);
+        simple_encrypt_block(block, ciphertext + i);
+        memcpy(current_iv, ciphertext + i, BLOCK_SIZE);  // Update IV
+    }
+}
+
+// CBC decryption
+void decrypt_cbc(const unsigned char *ciphertext, int ciphertext_len, 
+                 const unsigned char *iv, unsigned char *plaintext) {
+    unsigned char block[BLOCK_SIZE];
+    unsigned char current_iv[BLOCK_SIZE];
+    memcpy(current_iv, iv, BLOCK_SIZE);  // Initialize IV
+
+    for (int i = 0; i < ciphertext_len; i += BLOCK_SIZE) {
+        simple_decrypt_block(ciphertext + i, block);
+        xor_blocks(block, current_iv, plaintext + i, BLOCK_SIZE);
+        memcpy(current_iv, ciphertext + i, BLOCK_SIZE);  // Update IV
+    }
+}
+
+// Print data in hexadecimal
+void print_hex(const char *label, const unsigned char *data, int len) {
+    printf("%s: ", label);
+    for (int i = 0; i < len; i++) {
+        printf("%02x", data[i]);
+    }
+    printf("\n");
+}
+
+int main() {
+    unsigned char plaintext[PLAINTEXT_SIZE] = "This is a CBC/ECB test!";
+    unsigned char iv[BLOCK_SIZE] = "abcdefgh";  // Initialization vector
+    unsigned char ciphertext_ecb[PLAINTEXT_SIZE];
+    unsigned char ciphertext_cbc[PLAINTEXT_SIZE];
+    unsigned char decrypted_ecb[PLAINTEXT_SIZE];
+    unsigned char decrypted_cbc[PLAINTEXT_SIZE];
+
+    // Encrypt in ECB mode
+    encrypt_ecb(plaintext, PLAINTEXT_SIZE, ciphertext_ecb);
+
+    // Encrypt in CBC mode
+    encrypt_cbc(plaintext, PLAINTEXT_SIZE, iv, ciphertext_cbc);
+
+    // Introduce an error in ciphertext (e.g., flip a bit in the first block)
+    ciphertext_ecb[0] ^= 0xFF;  // Error in ECB ciphertext
+    ciphertext_cbc[0] ^= 0xFF;  // Error in CBC ciphertext
+
+    // Decrypt and observe the error propagation
+    decrypt_ecb(ciphertext_ecb, PLAINTEXT_SIZE, decrypted_ecb);
+    decrypt_cbc(ciphertext_cbc, PLAINTEXT_SIZE, iv, decrypted_cbc);
+
+    // Print results
+    printf("\n--- ECB Mode ---\n");
+    print_hex("Original Plaintext", plaintext, PLAINTEXT_SIZE);
+    print_hex("Decrypted Text (ECB)", decrypted_ecb, PLAINTEXT_SIZE);
+
+    printf("\n--- CBC Mode ---\n");
+    print_hex("Original Plaintext", plaintext, PLAINTEXT_SIZE);
+    print_hex("Decrypted Text (CBC)", decrypted_cbc, PLAINTEXT_SIZE);
+
+    return 0;
+}
