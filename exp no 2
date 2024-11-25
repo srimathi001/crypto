@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <openssl/sha.h> // For hash computation
+
+// Helper function to compute hash
+void compute_sha256(const char *message, unsigned char *output) {
+    SHA256((unsigned char *)message, strlen(message), output);
+}
+
+// Print hash or signature in hexadecimal format
+void print_hex(const unsigned char *data, size_t len) {
+    for (size_t i = 0; i < len; ++i) {
+        printf("%02x", data[i]);
+    }
+    printf("\n");
+}
+
+// Simulate DSA-like signature with randomness
+void dsa_sign(const char *message, unsigned char *signature) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    compute_sha256(message, hash);
+
+    // Add randomness (simulate DSA's random k)
+    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        signature[i] = hash[i] ^ (rand() % 256);
+    }
+}
+
+// Simulate RSA-like deterministic signature
+void rsa_sign(const char *message, unsigned char *signature) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    compute_sha256(message, hash);
+
+    // Deterministic signing (simulate RSA's fixed private key operation)
+    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
+        signature[i] = hash[i] ^ 0xAA; // Fixed "private key"
+    }
+}
+
+int main() {
+    const char *message = "Hello, Digital Signatures!";
+    unsigned char dsa_signature1[SHA256_DIGEST_LENGTH];
+    unsigned char dsa_signature2[SHA256_DIGEST_LENGTH];
+    unsigned char rsa_signature1[SHA256_DIGEST_LENGTH];
+    unsigned char rsa_signature2[SHA256_DIGEST_LENGTH];
+
+    // Initialize randomness
+    srand(time(NULL));
+
+    // DSA Signatures
+    dsa_sign(message, dsa_signature1);
+    dsa_sign(message, dsa_signature2);
+
+    // RSA Signatures
+    rsa_sign(message, rsa_signature1);
+    rsa_sign(message, rsa_signature2);
+
+    // Output results
+    printf("Message: %s\n\n", message);
+
+    printf("DSA Signature 1: ");
+    print_hex(dsa_signature1, SHA256_DIGEST_LENGTH);
+
+    printf("DSA Signature 2: ");
+    print_hex(dsa_signature2, SHA256_DIGEST_LENGTH);
+
+    printf("\nRSA Signature 1: ");
+    print_hex(rsa_signature1, SHA256_DIGEST_LENGTH);
+
+    printf("RSA Signature 2: ");
+    print_hex(rsa_signature2, SHA256_DIGEST_LENGTH);
+
+    return 0;
+}
