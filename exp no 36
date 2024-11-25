@@ -1,0 +1,83 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Function to calculate the greatest common divisor (GCD)
+int gcd(int a, int b) {
+    while (b != 0) {
+        int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+// Function to find the modular multiplicative inverse of 'a' modulo 26
+int mod_inverse(int a, int mod) {
+    for (int i = 1; i < mod; i++) {
+        if ((a * i) % mod == 1) {
+            return i;
+        }
+    }
+    return -1; // No modular inverse exists
+}
+
+// Encryption function: C = (a * p + b) % 26
+void encrypt(char *plaintext, int a, int b, char *ciphertext) {
+    for (int i = 0; plaintext[i] != '\0'; i++) {
+        if (plaintext[i] >= 'A' && plaintext[i] <= 'Z') {
+            ciphertext[i] = ((a * (plaintext[i] - 'A') + b) % 26) + 'A';
+        } else if (plaintext[i] >= 'a' && plaintext[i] <= 'z') {
+            ciphertext[i] = ((a * (plaintext[i] - 'a') + b) % 26) + 'a';
+        } else {
+            ciphertext[i] = plaintext[i]; // Non-alphabetic characters remain unchanged
+        }
+    }
+}
+
+// Decryption function: P = a_inv * (C - b) % 26
+void decrypt(char *ciphertext, int a, int b, char *plaintext) {
+    int a_inv = mod_inverse(a, 26); // Find the modular inverse of 'a'
+    if (a_inv == -1) {
+        printf("Error: Modular inverse does not exist for a = %d under mod 26.\n", a);
+        exit(1);
+    }
+
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            plaintext[i] = ((a_inv * ((ciphertext[i] - 'A' - b + 26) % 26)) % 26) + 'A';
+        } else if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            plaintext[i] = ((a_inv * ((ciphertext[i] - 'a' - b + 26) % 26)) % 26) + 'a';
+        } else {
+            plaintext[i] = ciphertext[i]; // Non-alphabetic characters remain unchanged
+        }
+    }
+}
+
+int main() {
+    char plaintext[256], ciphertext[256], decrypted_text[256];
+    int a, b;
+
+    printf("Enter the plaintext: ");
+    fgets(plaintext, sizeof(plaintext), stdin);
+    plaintext[strcspn(plaintext, "\n")] = '\0'; // Remove the trailing newline
+
+    printf("Enter the values of a and b (key parameters): ");
+    scanf("%d %d", &a, &b);
+
+    // Validate the value of 'a'
+    if (gcd(a, 26) != 1) {
+        printf("Error: 'a' must be coprime with 26 for the cipher to be one-to-one.\n");
+        return 1;
+    }
+
+    // Encrypt the plaintext
+    encrypt(plaintext, a, b, ciphertext);
+    printf("Encrypted ciphertext: %s\n", ciphertext);
+
+    // Decrypt the ciphertext
+    decrypt(ciphertext, a, b, decrypted_text);
+    printf("Decrypted plaintext: %s\n", decrypted_text);
+
+    return 0;
+}
