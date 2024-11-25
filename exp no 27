@@ -1,0 +1,55 @@
+#include <stdio.h>
+#include <math.h>
+
+// Function to compute modular exponentiation: (base^exp) % mod
+int modular_exponentiation(int base, int exp, int mod) {
+    int result = 1;
+    base = base % mod;
+
+    while (exp > 0) {
+        if (exp % 2 == 1) { // If exp is odd
+            result = (result * base) % mod;
+        }
+        exp = exp >> 1; // Divide exp by 2
+        base = (base * base) % mod;
+    }
+
+    return result;
+}
+
+// Function to simulate the attack
+void attack_rsa(int e, int n, int ciphertexts[], int num_ciphertexts) {
+    // Step 1: Build a lookup table for all possible plaintexts
+    int lookup[26];
+    for (int m = 0; m < 26; m++) {
+        lookup[m] = modular_exponentiation(m, e, n); // Encrypt plaintext m
+    }
+
+    // Step 2: Decrypt each ciphertext
+    printf("Decrypted message: ");
+    for (int i = 0; i < num_ciphertexts; i++) {
+        int c = ciphertexts[i];
+        for (int m = 0; m < 26; m++) {
+            if (lookup[m] == c) { // Match ciphertext to plaintext
+                printf("%c", 'A' + m); // Convert to character and print
+                break;
+            }
+        }
+    }
+    printf("\n");
+}
+
+int main() {
+    // Public key (e, n)
+    int e = 3; // Example public exponent
+    int n = 77; // Example modulus (should be a product of two primes)
+
+    // Intercepted ciphertexts (encrypted message)
+    int ciphertexts[] = {36, 1, 28, 1}; // Encrypted "BABA"
+    int num_ciphertexts = sizeof(ciphertexts) / sizeof(ciphertexts[0]);
+
+    // Perform the attack
+    attack_rsa(e, n, ciphertexts, num_ciphertexts);
+
+    return 0;
+}
