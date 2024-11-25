@@ -1,0 +1,88 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+// Function to compute the greatest common divisor (GCD)
+int gcd(int a, int b) {
+    while (b != 0) {
+        int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+// Extended Euclidean algorithm to compute modular inverse
+int mod_inverse(int e, int phi_n) {
+    int t = 0, new_t = 1;
+    int r = phi_n, new_r = e;
+
+    while (new_r != 0) {
+        int quotient = r / new_r;
+        int temp_t = t;
+        t = new_t;
+        new_t = temp_t - quotient * new_t;
+
+        int temp_r = r;
+        r = new_r;
+        new_r = temp_r - quotient * new_r;
+    }
+
+    if (r > 1) {
+        printf("e is not invertible modulo phi_n.\n");
+        return -1;
+    }
+
+    if (t < 0) {
+        t += phi_n;
+    }
+    return t;
+}
+
+// Function to generate a new public-private key pair
+void generate_new_keys(int p, int q, int *e, int *d, int *n, int *phi_n) {
+    *n = p * q;
+    *phi_n = (p - 1) * (q - 1);
+
+    // Choose a random e that is coprime with phi_n
+    for (*e = 2; *e < *phi_n; (*e)++) {
+        if (gcd(*e, *phi_n) == 1) {
+            break;
+        }
+    }
+
+    // Compute the modular inverse of e
+    *d = mod_inverse(*e, *phi_n);
+    if (*d == -1) {
+        printf("Failed to compute the private key.\n");
+        exit(1);
+    }
+}
+
+// Main program
+int main() {
+    // Step 1: Initial key generation
+    int p = 61, q = 53;  // Example prime numbers
+    int n, phi_n, e, d;
+
+    generate_new_keys(p, q, &e, &d, &n, &phi_n);
+    printf("Original keys:\n");
+    printf("Public key (e, n) = (%d, %d)\n", e, n);
+    printf("Private key (d, n) = (%d, %d)\n\n", d, n);
+
+    // Step 2: Simulate key leak and regeneration
+    printf("Simulating private key leak...\n");
+    int new_e, new_d;
+    generate_new_keys(p, q, &new_e, &new_d, &n, &phi_n); // Reuse same p and q
+
+    printf("New keys generated:\n");
+    printf("Public key (new_e, n) = (%d, %d)\n", new_e, n);
+    printf("Private key (new_d, n) = (%d, %d)\n\n", new_d, n);
+
+    // Step 3: Security analysis
+    printf("Security analysis:\n");
+    printf("With the leaked private key (d = %d), an attacker can compute phi(n) = %d\n", d, phi_n);
+    printf("Using phi(n), the attacker can factorize n = %d into p = %d and q = %d.\n", n, p, q);
+    printf("Thus, the new keys are also compromised.\n");
+
+    return 0;
+}
