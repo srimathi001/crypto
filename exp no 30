@@ -1,0 +1,79 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+#define BLOCK_SIZE 16  // 128-bit block size
+#define KEY_SIZE 16    // Secret key size, here assumed as 128-bit
+
+typedef uint8_t byte;
+
+// Simple XOR function for two byte arrays
+void xor_blocks(byte *block1, byte *block2, byte *result, size_t block_size) {
+    for (size_t i = 0; i < block_size; i++) {
+        result[i] = block1[i] ^ block2[i];
+    }
+}
+
+// CBC-MAC function (AES-like behavior without the actual AES cipher)
+void cbc_mac(byte *message, size_t message_len, byte *key, byte *mac) {
+    byte iv[BLOCK_SIZE] = {0};  // Initialization vector (IV) for CBC is assumed to be 0
+    byte block[BLOCK_SIZE] = {0};
+    
+    for (size_t i = 0; i < message_len; i += BLOCK_SIZE) {
+        // XOR current block with the IV (or the previous ciphertext block in real CBC)
+        for (size_t j = 0; j < BLOCK_SIZE; j++) {
+            block[j] = message[i + j];
+        }
+        
+        // Perform XOR with the previous ciphertext or IV (in real CBC)
+        xor_blocks(block, iv, mac, BLOCK_SIZE);
+        
+        // "Encrypt" the block by copying mac (simulating encryption process)
+        // In a real CBC, we would encrypt with a block cipher, like AES
+        memcpy(iv, mac, BLOCK_SIZE);  // Update IV to the current MAC
+    }
+}
+
+// Function to simulate the attack: adversary knows CBC-MAC of X and computes CBC-MAC of X || (X ? T)
+void adversary_attack(byte *X, size_t block_size, byte *T, byte *attacked_mac) {
+    byte modified_message[2 * block_size];
+    
+    // Construct the message X || (X ? T)
+    memcpy(modified_message, X, block_size);
+    byte xor_result[BLOCK_SIZE];
+    xor_blocks(X, T, xor_result, block_size);
+    memcpy(modified_message + block_size, xor_result, block_size);
+
+    // Now compute CBC-MAC of X || (X ? T)
+    cbc_mac(modified_message, 2 * block_size, NULL, attacked_mac);
+}
+
+int main() {
+    byte key[KEY_SIZE] = {0};  // Secret key (for simplicity, using 0 for now)
+    byte message[BLOCK_SIZE] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                                0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10}; // Example message X
+    byte mac[BLOCK_SIZE];  // This will store the MAC of the message X
+    byte T[BLOCK_SIZE];    // This will store the MAC for the attack
+    byte attacked_mac[BLOCK_SIZE]; // This will store the MAC for X || (X ? T)
+
+    // Compute the CBC-MAC for the original message X
+    cbc_mac(message, BLOCK_SIZE, key, mac);
+    printf("Original CBC-MAC of X: ");
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        printf("%02x ", mac[i]);
+    }
+    printf("\n");
+
+    // Now perform the attack: compute the MAC for X || (X ? T)
+    memcpy(T, mac, BLOCK_SIZE);  // Set T as the CBC-MAC of X
+    adversary_attack(message, BLOCK_SIZE, T, attacked_mac);
+
+    // Output the attacked MAC for X || (X ? T)
+    printf("Attacked CBC-MAC for X || (X ? T): ");
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        printf("%02x ", attacked_mac[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
