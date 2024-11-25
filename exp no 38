@@ -1,0 +1,113 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define MATRIX_SIZE 2
+#define MODULO 26
+
+// Function to calculate the modular multiplicative inverse
+int modInverse(int a, int m) {
+    for (int x = 1; x < m; x++) {
+        if ((a * x) % m == 1) {
+            return x;
+        }
+    }
+    return -1; // Inverse does not exist
+}
+
+// Function to compute the determinant of a 2x2 matrix
+int determinant(int matrix[MATRIX_SIZE][MATRIX_SIZE]) {
+    return (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]) % MODULO;
+}
+
+// Function to find the adjugate (adjoint) of a 2x2 matrix
+void adjugate(int matrix[MATRIX_SIZE][MATRIX_SIZE], int adj[MATRIX_SIZE][MATRIX_SIZE]) {
+    adj[0][0] =  matrix[1][1];
+    adj[0][1] = -matrix[0][1];
+    adj[1][0] = -matrix[1][0];
+    adj[1][1] =  matrix[0][0];
+}
+
+// Function to multiply two 2x2 matrices
+void multiplyMatrices(int mat1[MATRIX_SIZE][MATRIX_SIZE], int mat2[MATRIX_SIZE][MATRIX_SIZE], int res[MATRIX_SIZE][MATRIX_SIZE]) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < MATRIX_SIZE; j++) {
+            res[i][j] = 0;
+            for (int k = 0; k < MATRIX_SIZE; k++) {
+                res[i][j] += mat1[i][k] * mat2[k][j];
+            }
+            res[i][j] %= MODULO;
+            if (res[i][j] < 0) res[i][j] += MODULO;
+        }
+    }
+}
+
+// Function to compute the inverse of a 2x2 matrix modulo 26
+int inverseMatrix(int matrix[MATRIX_SIZE][MATRIX_SIZE], int inverse[MATRIX_SIZE][MATRIX_SIZE]) {
+    int det = determinant(matrix);
+    if (det < 0) det += MODULO;
+
+    int detInverse = modInverse(det, MODULO);
+    if (detInverse == -1) return 0; // Inverse does not exist
+
+    int adj[MATRIX_SIZE][MATRIX_SIZE];
+    adjugate(matrix, adj);
+
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < MATRIX_SIZE; j++) {
+            inverse[i][j] = (adj[i][j] * detInverse) % MODULO;
+            if (inverse[i][j] < 0) inverse[i][j] += MODULO;
+        }
+    }
+    return 1;
+}
+
+// Function to encrypt a plaintext pair using a key matrix
+void encrypt(int key[MATRIX_SIZE][MATRIX_SIZE], int plaintext[MATRIX_SIZE], int ciphertext[MATRIX_SIZE]) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        ciphertext[i] = 0;
+        for (int j = 0; j < MATRIX_SIZE; j++) {
+            ciphertext[i] += key[i][j] * plaintext[j];
+        }
+        ciphertext[i] %= MODULO;
+    }
+}
+
+// Function to demonstrate a chosen plaintext attack
+void chosenPlaintextAttack(int plaintextPairs[MATRIX_SIZE][MATRIX_SIZE], int ciphertextPairs[MATRIX_SIZE][MATRIX_SIZE]) {
+    int inversePlaintext[MATRIX_SIZE][MATRIX_SIZE];
+    if (!inverseMatrix(plaintextPairs, inversePlaintext)) {
+        printf("The plaintext matrix is not invertible.\n");
+        return;
+    }
+
+    int key[MATRIX_SIZE][MATRIX_SIZE];
+    multiplyMatrices(ciphertextPairs, inversePlaintext, key);
+
+    printf("Recovered Key Matrix:\n");
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < MATRIX_SIZE; j++) {
+            printf("%d ", key[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    // Example chosen plaintext pairs
+    int plaintextPairs[MATRIX_SIZE][MATRIX_SIZE] = {
+        {7, 8}, // "HI"
+        {11, 11} // "LL"
+    };
+
+    // Corresponding ciphertext pairs
+    int ciphertextPairs[MATRIX_SIZE][MATRIX_SIZE] = {
+        {19, 20}, // "TU"
+        {5, 15}  // "FO"
+    };
+
+    // Perform the chosen plaintext attack
+    printf("Performing Chosen Plaintext Attack...\n");
+    chosenPlaintextAttack(plaintextPairs, ciphertextPairs);
+
+    return 0;
+}
