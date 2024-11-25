@@ -1,0 +1,78 @@
+#include <stdio.h>
+
+// Function to compute the greatest common divisor (GCD)
+int gcd(int a, int b) {
+    while (b != 0) {
+        int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+// Extended Euclidean Algorithm to find the modular inverse of e modulo phi_n
+int mod_inverse(int e, int phi_n) {
+    int t = 0, new_t = 1;
+    int r = phi_n, new_r = e;
+
+    while (new_r != 0) {
+        int quotient = r / new_r;
+        int temp_t = t;
+        t = new_t;
+        new_t = temp_t - quotient * new_t;
+
+        int temp_r = r;
+        r = new_r;
+        new_r = temp_r - quotient * new_r;
+    }
+
+    if (r > 1) {
+        printf("e is not invertible modulo phi_n.\n");
+        return -1;
+    }
+
+    if (t < 0) {
+        t += phi_n;
+    }
+    return t;
+}
+
+// Function to factorize n and find p and q
+void find_factors(int n, int *p, int *q) {
+    for (int i = 2; i * i <= n; i++) {
+        if (n % i == 0) {
+            *p = i;
+            *q = n / i;
+            return;
+        }
+    }
+    *p = *q = -1; // If factors not found (shouldn't happen for valid RSA n)
+}
+
+int main() {
+    int e = 31, n = 3599;
+    int p, q;
+
+    // Step 1: Factorize n to find p and q
+    find_factors(n, &p, &q);
+    if (p == -1 || q == -1) {
+        printf("Failed to factorize n.\n");
+        return 1;
+    }
+
+    printf("Factors of n: p = %d, q = %d\n", p, q);
+
+    // Step 2: Compute phi(n)
+    int phi_n = (p - 1) * (q - 1);
+    printf("phi(n) = %d\n", phi_n);
+
+    // Step 3: Compute modular inverse of e modulo phi(n)
+    int d = mod_inverse(e, phi_n);
+    if (d == -1) {
+        printf("Failed to compute the private key.\n");
+        return 1;
+    }
+
+    printf("The private key d = %d\n", d);
+    return 0;
+}
