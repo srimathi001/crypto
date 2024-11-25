@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+
+#define BLOCK_SIZE 8  // S-DES works on 8-bit blocks
+
+// Test data
+#define KEY 0b0111111101  // 10-bit binary key
+#define COUNTER 0b00000000  // Initial counter
+#define PLAINTEXT "000000010000001000000100"  // Binary plaintext
+
+// S-DES functions (simplified for this example)
+
+// Perform a simple XOR-based encryption for demonstration
+uint8_t sdes_encrypt(uint8_t block, uint16_t key) {
+    return block ^ (key & 0xFF); // Simple XOR with lower 8 bits of the key
+}
+
+uint8_t sdes_decrypt(uint8_t block, uint16_t key) {
+    return block ^ (key & 0xFF); // XOR again to reverse encryption
+}
+
+// Converts binary string to uint8_t
+uint8_t binary_to_uint8(const char *binary) {
+    uint8_t value = 0;
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        value = (value << 1) | (binary[i] - '0');
+    }
+    return value;
+}
+
+// Converts uint8_t to binary string
+void uint8_to_binary(uint8_t value, char *binary) {
+    for (int i = BLOCK_SIZE - 1; i >= 0; i--) {
+        binary[i] = (value & 1) + '0';
+        value >>= 1;
+    }
+    binary[BLOCK_SIZE] = '\0';
+}
+
+// Encrypt plaintext in CTR mode
+void ctr_encrypt(const char *plaintext, uint16_t key, uint8_t initial_counter, char *ciphertext) {
+    size_t len = strlen(plaintext);
+    char block[BLOCK_SIZE + 1];
+    uint8_t counter = initial_counter;
+
+    for (size_t i = 0; i < len; i += BLOCK_SIZE) {
+        strncpy(block, plaintext + i, BLOCK_SIZE);
+        block[BLOCK_SIZE] = '\0';
+
+        uint8_t plain_block = binary_to_uint8(block);
+        uint8_t keystream = sdes_encrypt(counter, key);
+        uint8_t cipher_block = plain_block ^ keystream;
+
+        uint8_to_binary(cipher_block, block);
+        strcat(ciphertext, block);
+
+        counter++;  // Increment counter for the next block
+    }
+}
+
+// Decrypt ciphertext in CTR mode
+void ctr_decrypt(const char *ciphertext, uint16_t key, uint8_t initial_counter, char *plaintext) {
+    size_t len = strlen(ciphertext);
+    char block[BLOCK_SIZE + 1];
+    uint8_t counter = initial_counter;
+
+    for (size_t i = 0; i < len; i += BLOCK_SIZE) {
+        strncpy(block, ciphertext + i, BLOCK_SIZE);
+        block[BLOCK_SIZE] = '\0';
+
+        uint8_t cipher_block = binary_to_uint8(block);
+        uint8_t keystream = sdes_encrypt(counter, key); // Same keystream as encryption
+        uint8_t plain_block = cipher_block ^ keystream;
+
+        uint8_to_binary(plain_block, block);
+        strcat(plaintext, block);
+
+        counter++;  // Increment counter for the next block
+    }
+}
+
+int main() {
+    char ciphertext[256] = {0};
+    char decrypted_plaintext[256] = {0};
+
+    printf("Plaintext: %s\n", PLAINTEXT);
+    printf("Key: 0b0111111101\n");
+    printf("Initial Counter: 0b00000000\n");
+
+    // Encrypt
+    ctr_encrypt(PLAINTEXT, KEY, COUNTER, ciphertext);
+    printf("Ciphertext: %s\n", ciphertext);
+
+    // Decrypt
+    ctr_decrypt(ciphertext, KEY, COUNTER, decrypted_plaintext);
+    printf("Decrypted Plaintext: %s\n", decrypted_plaintext);
+
+    return 0;
+}
